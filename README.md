@@ -2,7 +2,7 @@
 
 A web application, which lets paste and share snippets of text
 
-![snippetbox web app](/img/homepage.png "snippetbox web app")
+![snippetbox web app](img/homepage.png "snippetbox web app")
 
 ###  MySQL migration
 
