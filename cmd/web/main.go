@@ -23,76 +23,18 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var (
-	addr      string
-	staticDir string
-	dsn       string
-	app       *application
-	tlsConfig *tls.Config
-	logLogger *log.Logger
-)
-
 // application holds the application-wide dependencies for the web application
 type application struct {
 	logger         *slog.Logger
-	snippets       *models.SnippetModel
-	users          *models.UserModel
+	snippets       models.SnippetModelInterface
+	users          models.UserModelInterface
 	templateCache  map[string]*template.Template
 	formDecoder    *form.Decoder
 	sessionManager *scs.SessionManager
 }
 
-// init parses cmd flags initializes application struct and other variables for http.Server
-func init() {
-	logger := initLogger()
-
-	err := godotenv.Load()
-	if err != nil {
-		logger.Error(fmt.Sprintf("Error loading .env file: %v", err.Error()))
-		os.Exit(1)
-	}
-	defaultDsn := os.Getenv("DSN")
-
-	flag.StringVar(&addr, "addr", ":4000", "HTTP network address")
-	flag.StringVar(&staticDir, "static-dir", "./ui/static", "Path to static assets")
-	flag.StringVar(&dsn, "dsn", defaultDsn, "MySQL data source name")
-	flag.Parse()
-
-	db, err := openDB(dsn)
-	if err != nil {
-		logger.Error(err.Error())
-		os.Exit(1)
-	}
-
-	templateCache, err := newTemplateCache()
-	if err != nil {
-		logger.Error(err.Error())
-		os.Exit(1)
-	}
-
-	formDecoder := form.NewDecoder()
-
-	sessionManager := scs.New()
-	sessionManager.Store = mysqlstore.New(db)
-	sessionManager.Lifetime = 12 * time.Hour
-	sessionManager.Cookie.Secure = true
-
-	app = &application{
-		logger:         logger,
-		snippets:       &models.SnippetModel{DB: db},
-		users:          &models.UserModel{DB: db},
-		templateCache:  templateCache,
-		formDecoder:    formDecoder,
-		sessionManager: sessionManager,
-	}
-
-	tlsConfig = &tls.Config{
-		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
-	}
-}
-
 // initLogger initializes a new structured logger
-func initLogger() *slog.Logger {
+func initLogger() (slogLogger *slog.Logger, logLogger *log.Logger) {
 	loggerHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
 		Level:     slog.LevelInfo,
@@ -107,7 +49,8 @@ func initLogger() *slog.Logger {
 		},
 	})
 	logLogger = slog.NewLogLogger(loggerHandler, slog.LevelError)
-	return slog.New(loggerHandler)
+	slogLogger = slog.New(loggerHandler)
+	return
 }
 
 // openDB initializes DB connection pool and check connection for errors
@@ -124,6 +67,57 @@ func openDB(dsn string) (*sql.DB, error) {
 }
 
 func main() {
+	slogLogger, logLogger := initLogger()
+
+	err := godotenv.Load()
+	if err != nil {
+		slogLogger.Error(fmt.Sprintf("Error loading .env file: %v", err.Error()))
+		os.Exit(1)
+	}
+	defaultDsn := os.Getenv("DSN")
+
+	var (
+		addr      string
+		staticDir string
+		dsn       string
+	)
+	flag.StringVar(&addr, "addr", ":4000", "HTTP network address")
+	flag.StringVar(&staticDir, "static-dir", "./ui/static", "Path to static assets")
+	flag.StringVar(&dsn, "dsn", defaultDsn, "MySQL data source name")
+	flag.Parse()
+
+	db, err := openDB(dsn)
+	if err != nil {
+		slogLogger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	templateCache, err := newTemplateCache()
+	if err != nil {
+		slogLogger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	formDecoder := form.NewDecoder()
+
+	sessionManager := scs.New()
+	sessionManager.Store = mysqlstore.New(db)
+	sessionManager.Lifetime = 12 * time.Hour
+	sessionManager.Cookie.Secure = true
+
+	app := &application{
+		logger:         slogLogger,
+		snippets:       &models.SnippetModel{DB: db},
+		users:          &models.UserModel{DB: db},
+		templateCache:  templateCache,
+		formDecoder:    formDecoder,
+		sessionManager: sessionManager,
+	}
+
+	tlsConfig := &tls.Config{
+		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
+	}
+
 	app.logger.Info("Starting server on",
 		"addr", addr)
 
@@ -137,7 +131,7 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 	}
 
-	err := srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
+	err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
 	app.logger.Error(err.Error())
 	os.Exit(1)
 }

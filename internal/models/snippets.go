@@ -15,6 +15,13 @@ type Snippet struct {
 	Expires time.Time
 }
 
+// SnippetModelInterface describes the methods for the SnippetModel
+type SnippetModelInterface interface {
+	Insert(title string, content string, expires int) (int, error)
+	Get(id int) (*Snippet, error)
+	Latest() ([]*Snippet, error)
+}
+
 // SnippetModel wraps a database connection pool and provides methods to access and manipulate the snippets
 type SnippetModel struct {
 	DB *sql.DB
