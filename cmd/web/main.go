@@ -31,6 +31,7 @@ type application struct {
 	templateCache  map[string]*template.Template
 	formDecoder    *form.Decoder
 	sessionManager *scs.SessionManager
+	debug          bool
 }
 
 // initLogger initializes a new structured logger
@@ -80,10 +81,12 @@ func main() {
 		addr      string
 		staticDir string
 		dsn       string
+		debugFlag bool
 	)
 	flag.StringVar(&addr, "addr", ":4000", "HTTP network address")
 	flag.StringVar(&staticDir, "static-dir", "./ui/static", "Path to static assets")
 	flag.StringVar(&dsn, "dsn", defaultDsn, "MySQL data source name")
+	flag.BoolVar(&debugFlag, "debug", false, "Enable debug mode")
 	flag.Parse()
 
 	db, err := openDB(dsn)
@@ -112,6 +115,7 @@ func main() {
 		templateCache:  templateCache,
 		formDecoder:    formDecoder,
 		sessionManager: sessionManager,
+		debug:          debugFlag,
 	}
 
 	tlsConfig := &tls.Config{
