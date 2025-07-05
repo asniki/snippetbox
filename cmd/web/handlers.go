@@ -263,3 +263,9 @@ func ping(w http.ResponseWriter, r *http.Request) {
 	_ = r
 	w.Write([]byte("OK"))
 }
+
+// about displays 'about' page
+func (app *application) about(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(r)
+	app.render(w, r, http.StatusOK, "about.tmpl", data)
+}
