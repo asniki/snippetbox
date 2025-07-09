@@ -24,6 +24,7 @@ type UserModelInterface interface {
 	Insert(name, email, password string) error
 	Authenticate(email, password string) (int, error)
 	Exists(id int) (bool, error)
+	Get(id int) (*User, error)
 }
 
 // UserModel wraps a database connection pool and provides methods to access and manipulate the users
@@ -91,4 +92,23 @@ func (m *UserModel) Exists(id int) (bool, error) {
 	var exists bool
 	err := m.DB.QueryRow(stmt, id).Scan(&exists)
 	return exists, err
+}
+
+// Get returns the user by id
+func (m *UserModel) Get(id int) (*User, error) {
+	stmt := `SELECT id, name, email, created FROM users WHERE id = ?`
+
+	u := &User{}
+
+	row := m.DB.QueryRow(stmt, id)
+	err := row.Scan(&u.ID, &u.Name, &u.Email, &u.Created)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNoRecord
+		} else {
+			return nil, err
+		}
+	}
+
+	return u, nil
 }

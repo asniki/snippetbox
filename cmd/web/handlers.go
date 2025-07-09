@@ -269,3 +269,32 @@ func (app *application) about(w http.ResponseWriter, r *http.Request) {
 	data := app.newTemplateData(r)
 	app.render(w, r, http.StatusOK, "about.tmpl", data)
 }
+
+// accountView displays 'account' page
+func (app *application) accountView(w http.ResponseWriter, r *http.Request) {
+	id := app.sessionManager.GetInt(r.Context(), "authenticatedUserID")
+	if id == 0 {
+		// redirect the user to the login page.
+		http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+		return
+	}
+
+	// otherwise, we check to see if a user with that ID exists in our database
+	user, err := app.users.Get(id)
+	if err != nil {
+		if errors.Is(err, models.ErrNoRecord) {
+			// redirect the user to the login page.
+			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+		} else {
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	// fmt.Fprintf(w, "%+v", *user)
+
+	data := app.newTemplateData(r)
+	data.User = *user
+
+	app.render(w, r, http.StatusOK, "account.tmpl", data)
+}

@@ -1,6 +1,9 @@
 package mocks
 
-import "asniki/snippetbox/internal/models"
+import (
+	"asniki/snippetbox/internal/models"
+	"time"
+)
 
 // UserModel mocks models.UserModel
 type UserModel struct{}
@@ -31,5 +34,20 @@ func (m *UserModel) Exists(id int) (bool, error) {
 		return true, nil
 	default:
 		return false, nil
+	}
+}
+
+// Get mocks models.UserModel.Get
+func (m *UserModel) Get(id int) (*models.User, error) {
+	switch id {
+	case 1:
+		return &models.User{
+			ID:      1,
+			Name:    "Bob",
+			Email:   "bob@example.com",
+			Created: time.Now(),
+		}, nil
+	default:
+		return nil, models.ErrNoRecord
 	}
 }
